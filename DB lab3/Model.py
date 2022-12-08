@@ -1,5 +1,9 @@
 import psycopg2
 from psycopg2 import sql
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from Tables import Author, Series, Book, Genre, BookGenre
+import time
 
 
 class Model:
@@ -8,6 +12,9 @@ class Model:
             self.__context = psycopg2.connect(host=host, user=user_name, password=password, database=dbname)
             self.__cursor = self.__context.cursor()
             self.__table_names = None
+            self.engine = create_engine('postgresql://postgres:qwerty@localhost:5432/book_shop', echo=True)
+            self.Session = sessionmaker(bind=self.engine)
+            self.s = self.Session()
         except Exception as _ex:
             print("[INFO] Error while working with PostgresSQL", _ex)
 
@@ -63,43 +70,56 @@ class Model:
                           tc.table_name=%s;""", (table_name,))
         return self.__cursor.fetchall()
 
-    def insert_data(self, table_name, values, column):
-        line = '('
-        columns = '('
-        for key in range(len(values)):
-            if values[key]:
-                line += column[key] + ','
-                columns += f"'{values[key]}'" + ','
-        columns = columns[:-1] + ')'
-        line = line[:-1] + ')'
-        try:
-            self.__cursor.execute(
-                sql.SQL('INSERT INTO {} {} VALUES {}').format(sql.Identifier(table_name),
-                                                              sql.SQL(line), sql.SQL(columns)))
-            self.__context.commit()
-        except Exception as e:
-            print(e)
+    def insert_data(self, table_name, values):
+        if table_name == 'author':
+            data = Author(name=values[0])
+        elif table_name == 'series':
+            data = Series(name=values[0], book_numbers=values[1], author_id=values[2])
+        elif table_name == 'book':
+            data = Book(name=values[0], price=values[1], amount=values[2],
+                        publication_date=values[3], series_id=values[4])
+        elif table_name == 'genre':
+            data = Genre(name=values[0])
+        elif table_name == 'book_genre':
+            data = BookGenre(book_id=values[0], genre_id=values[1])
+        self.s.add(data)
+        self.s.commit()
+        self.s.close()
 
-    def delete_data(self, table_name, parameter, cond):
-        string = f"{parameter}={cond}"
-        self.__cursor.execute(
-            sql.SQL('DELETE FROM {} WHERE {}').format(sql.Identifier(table_name), sql.SQL(string)))
-        self.__context.commit()
+    def delete_data(self, table_name, cond):
+        if table_name == 'author':
+            data = self.s.query(Author).get(cond)
+        elif table_name == 'series':
+            data = self.s.query(Series).get(cond)
+        elif table_name == 'book':
+            data = self.s.query(Book).get(cond)
+        elif table_name == 'genre':
+            data = self.s.query(Genre).get(cond)
+        elif table_name == 'book_genre':
+            data = self.s.query(BookGenre).get(cond)
+        self.s.delete(data)
+        self.s.commit()
+        self.s.close()
 
-    def change_data(self, table_name, values, column, cond, id_name):
-        string = f"{id_name} = '{cond}'"
-        columns = ''
-        for key in range(len(values)):
-            if values[key]:
-                columns += f"{column[key]} = '{values[key]}'" + ','
-        columns = columns[:-1] + ''
-        try:
-            self.__cursor.execute(
-                sql.SQL('UPDATE {} SET {} WHERE {}').format(sql.Identifier(table_name),
-                                                            sql.SQL(columns), sql.SQL(string)))
-            self.__context.commit()
-        except Exception as e:
-            print(e)
+    def change_data(self, table_name, values, cond):
+        if table_name == 'author':
+            data = self.s.query(Author).get(cond)
+            data.name = values[0]
+        elif table_name == 'series':
+            data = self.s.query(Series).get(cond)
+            data.name = values[0]
+        elif table_name == 'book':
+            data = self.s.query(Book).get(cond)
+            data.name = values[0]
+            data.price = values[1]
+            data.amount = values[2]
+            data.publication_date = values[3]
+            data.series_id = values[4]
+        elif table_name == 'genre':
+            data = self.s.query(Genre).get(cond)
+            data.name = values[0]
+        self.s.commit()
+        self.s.close()
 
     def generate_data(self, table_name, count):
         types = self.get_column_types(table_name)
@@ -136,13 +156,16 @@ class Model:
     def find_data(self, num):
         if num == 1:
             string = f"SELECT * FROM book WHERE amount > {int(input('Write min. amount: '))}"
+            t1 = time.perf_counter()
             self.__cursor.execute(string)
-            return self.__cursor.fetchall()
+            return self.__cursor.fetchall(), t1
         elif num == 2:
             string = f"SELECT * FROM author WHERE name = '{input('Write name: ')}'"
+            t1 = time.perf_counter()
             self.__cursor.execute(string)
-            return self.__cursor.fetchall()
+            return self.__cursor.fetchall(), t1
         elif num == 3:
             string = f"SELECT * FROM genre WHERE name = '{input('Write name: ')}'"
+            t1 = time.perf_counter()
             self.__cursor.execute(string)
-            return self.__cursor.fetchall()
+            return self.__cursor.fetchall(), t1
