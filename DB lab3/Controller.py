@@ -1,6 +1,6 @@
 from View import *
 from Model import *
-import time
+
 
 
 def insert(model):
@@ -11,14 +11,14 @@ def insert(model):
     values = []
     for i in range(len(table_data[0])):
         values.append(input(f"Enter value for column {table_data[0][i]}: "))
-    model.insert_data(table, values, table_data[0])
+    model.insert_data(table, values)
 
 
 def delete(model):
     table = tables_print(model.get_table_names())
     table_data = model.get_table_data(table)
     table_print(table_data[1])
-    model.delete_data(table, table_data[0][0], table_data[1][int(input('Choose number:')) - 1][0])
+    model.delete_data(table, table_data[1][int(input('Choose number:')) - 1][0])
 
 
 def change(model):
@@ -32,7 +32,7 @@ def change(model):
     values = []
     for i in range(len(table_data[0])):
         values.append(input(f"Enter value for column {table_data[0][i]}: "))
-    model.change_data(table, values, table_data[0], num, id_name)
+    model.change_data(table, values, num)
 
 
 def random(model):
@@ -43,8 +43,10 @@ def random(model):
 def find(model):
     find_data_menu()
     n = int(input())
-    data = model.find_data(n) if 1 <= n <= 3 else print("Wrong parameter")
+    data, t1 = model.find_data(n) if 1 <= n <= 3 else print("Wrong parameter")
+    t2 = time.perf_counter()
     table_print(data)
+    print(f"Time of searching: {t2 - t1} milliseconds")
 
 
 class Controller:
@@ -64,7 +66,6 @@ class Controller:
         elif self.__operate == 4:
             random(model)
         elif self.__operate == 5:
-            t1 = time.perf_counter()
+
             find(model)
-            t2 = time.perf_counter()
-            print(f"Time of searching: {t2-t1} milliseconds")
+
